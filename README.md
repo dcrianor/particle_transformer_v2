@@ -1,109 +1,167 @@
-# Particle Transformer
+# Particle Transformer - V2
 
-This repo is the official implementation of "[Particle Transformer for Jet Tagging](https://arxiv.org/abs/2202.03772)". It includes the code, pre-trained models, and the JetClass dataset.
+This repository contains an implementation of "[Particle Transformer for Jet Tagging](https://arxiv.org/abs/2202.03772)," including the code, pre-trained models, and the JetClass dataset. This updated version incorporates new scripts for automated training, evaluation, and plotting, streamlining the process of comparing different models, feature sets, and dataset sizes.
 
 ![jet-tagging](figures/jet-tagging.png)
 
-## Updates
+## What's New in V2?
 
-### 2023/07/06
+Version 2 introduces a suite of new scripts designed to automate and enhance the model training and evaluation workflow. Key additions include:
 
-We added a [helper function](dataloader.py) to read the JetClass dataset into regular numpy arrays. To use it, simply download the file [dataloader.py](dataloader.py) and do:
+* **Automated Training Script (`run_training_comparisons_clean.sh`)**: A robust script to run a series of training comparisons with built-in temperature monitoring and cooldown periods to prevent overheating.
+* **Comprehensive Evaluation Script (`evaluate.sh`)**: A script that automates the process of generating comparison plots for different models, feature sets, and dataset sizes.
+* **Advanced Plotting and Analysis**: New Python scripts for generating detailed ROC curves, background rejection plots, and macro performance comparisons.
+* **Corrected Evaluation Metrics**: The evaluation scripts now use a normalized discriminant score for more accurate binary classification evaluation in a multi-class setting.
+* **Additional Utilities**: Tools have been added to monitor training progress in real-time and to create smaller, sampled versions of the datasets for quick tests.
 
-```python
-from dataloader import read_file
-
-x_particles, x_jet, y = read_file(filepath)
-```
-
-The return values are:
-
-- `x_particles`: a zero-padded numpy array of particle-level features in the shape `(num_jets, num_particle_features, max_num_particles)`.
-- `x_jets`: a numpy array of jet-level features in the shape `(num_jets, num_jet_features)`.
-- `y`: a one-hot encoded numpy array of the truth lables in the shape `(num_jets, num_classes)`.
+---
 
 ## Introduction
 
-### JetClass dataset
+### The JetClass Dataset
 
-**[JetClass](https://zenodo.org/record/6619768)** is a new large-scale jet tagging dataset proposed in "[Particle Transformer for Jet Tagging](https://arxiv.org/abs/2202.03772)". It consists of 100M jets for training, 5M for validation and 20M for testing. The dataset contains 10 classes of jets, simulated with [MadGraph](https://launchpad.net/mg5amcnlo) + [Pythia](https://pythia.org/) + [Delphes](https://cp3.irmp.ucl.ac.be/projects/delphes):
+**[JetClass](https://zenodo.org/record/6619768)** is a new large-scale jet tagging dataset proposed in "[Particle Transformer for Jet Tagging](https://arxiv.org/abs/2202.03772)." It consists of 100M jets for training, 5M for validation, and 20M for testing. The dataset contains 10 classes of jets, simulated with [MadGraph](https://launchpad.net/mg5amcnlo) + [Pythia](https://pythia.org/) + [Delphes](https://cp3.irmp.ucl.ac.be/projects/delphes).
 
 ![dataset](figures/dataset.png)
 
 ### Particle Transformer (ParT)
 
-The **Particle Transformer (ParT)** architecture is described in "[Particle Transformer for Jet Tagging](https://arxiv.org/abs/2202.03772)", which can serve as a general-purpose backbone for jet tagging and similar tasks in particle physics. It is a Transformer-based architecture, enhanced with pairwise particle interaction features that are incorporated in the multi-head attention as a bias before softmax. The ParT architecture outperforms the previous state-of-the-art, ParticleNet, by a large margin on various jet tagging benchmarks.
+The **Particle Transformer (ParT)** architecture is described in "[Particle Transformer for Jet Tagging](https.arxiv.org/abs/2202.03772)," and can serve as a general-purpose backbone for jet tagging and similar tasks in particle physics. It is a Transformer-based architecture, enhanced with pairwise particle interaction features that are incorporated in the multi-head attention as a bias before the softmax function. The ParT architecture outperforms the previous state-of-the-art, ParticleNet, by a large margin on various jet tagging benchmarks.
 
 ![arch](figures/arch.png)
 
-## Getting started
+---
 
-### Download the datasets
+## Getting Started
 
-To download the JetClass/QuarkGluon/TopLandscape datasets:
+### 1. Download the Datasets
 
-```
+To download the JetClass, QuarkGluon, or TopLandscape datasets, use the provided script:
+
+```bash
 ./get_datasets.py [JetClass|QuarkGluon|TopLandscape] [-d DATA_DIR]
+After the download is complete, the dataset paths will be automatically updated in the env.sh file.
 ```
 
-After download, the dataset paths will be updated in the `env.sh` file.
+### 2. Install Dependencies
+The training framework is built on PyTorch and utilizes the weaver library for data loading and transformations. To install weaver, run:
 
-### Training
-
-The ParT models are implemented in PyTorch and the training is based on the [weaver](https://github.com/hqucms/weaver-core) framework for dataset loading and transformation. To install `weaver`, run:
-
-```python
+```bash
 pip install 'weaver-core>=0.4'
 ```
 
-**To run the training on the JetClass dataset:**
+### 3. Automated Training (New in V2)
+The new run_training_comparisons_clean.sh script allows for running a series of training jobs in a safe and automated manner.
 
-```
-./train_JetClass.sh [ParT|PN|PFN|PCNN] [kin|kinpid|full] ...
-```
+Configuration
+Open run_training_comparisons_clean.sh and configure the following variables to define your training runs:
 
-where the first argument is the model:
+MODELS: An array of models to train (e.g., "ParT", "PN").
 
-- ParT: [Particle Transformer](https://arxiv.org/abs/2202.03772)
-- PN: [ParticleNet](https://arxiv.org/abs/1902.08570)
-- PFN: [Particle Flow Network](https://arxiv.org/abs/1810.05165)
-- PCNN: [P-CNN](https://arxiv.org/abs/1902.09914)
+FEATURES: An array of feature sets to use (e.g., "kin", "kinpid", "full").
 
-and the second argument is the input feature sets:
+DATASET_SIZES: An array of dataset sizes to train on (e.g., "1M", "2M", "10M").
 
-- [kin](data/JetClass/JetClass_kin.yaml): only kinematic inputs
-- [kinpid](data/JetClass/JetClass_kinpid.yaml): kinematic inputs + particle identification
-- [full](data/JetClass/JetClass_full.yaml) (_default_): kinematic inputs + particle identification + trajectory displacement
+Running Automated Training
+Execute the script from your terminal:
 
-Additional arguments will be passed directly to the `weaver` command, such as `--batch-size`, `--start-lr`, `--gpus`, etc., and will override existing arguments in `train_JetClass.sh`.
-
-**Multi-gpu support:**
-
-- using PyTorch's DataParallel multi-gpu training:
-
-```
-./train_JetClass.sh ParT full --gpus 0,1,2,3 --batch-size [total_batch_size] ...
+```bash
+./run_training_comparisons_clean.sh
 ```
 
-- using PyTorch's DistributedDataParallel:
+The script will iterate through all combinations of the configured models, features, and dataset sizes. It also includes temperature monitoring to prevent your hardware from overheating, with automatic cooldown periods. All training logs will be saved to training_log_YYYYMMDD_HHMMSS.txt and temperature logs to temperature_log_YYYYMMDD_HHMMSS.txt.
 
-```
-DDP_NGPUS=4 ./train_JetClass.sh ParT full --batch-size [batch_size_per_gpu] ...
-```
+### 4. Manual Training
+You can still run individual training jobs using the train_JetClass_fix.sh script (an updated version of the original training script).
 
-**To run the training on the QuarkGluon dataset:**
+Training on the JetClass Dataset
+To run a single training on the JetClass dataset:
 
-```
-./train_QuarkGluon.sh [ParT|ParT-FineTune|PN|PN-FineTune|PFN|PCNN] [kin|kinpid|kinpidplus] ...
-```
-
-**To run the training on the TopLandscape dataset:**
-
-```
-./train_TopLandscape.sh [ParT|ParT-FineTune|PN|PN-FineTune|PFN|PCNN] [kin] ...
+```bash
+./train_JetClass_fix.sh [ParT|PN|PFN|PCNN] [kin|kinpid|full] [1M|2M|10M|100M]
 ```
 
-The argument `ParT-FineTune` or `PN-FineTune` will run the fine-tuning using [models pre-trained on the JetClass dataset](models/).
+First argument: The model architecture (ParT, PN, PFN, or PCNN).
+
+Second argument: The input feature set (kin, kinpid, or full).
+
+Third argument: The size of the training dataset.
+
+Additional arguments can be passed to the weaver command, such as --batch-size, --start-lr, and --gpus.
+
+#### Multi-GPU Support
+DataParallel:
+
+```bash
+./train_JetClass_fix.sh ParT full 10M --gpus 0,1,2,3 --batch-size [total_batch_size]
+```
+
+DistributedDataParallel:
+
+```bash
+DDP_NGPUS=4 ./train_JetClass_fix.sh ParT full 10M --batch-size [batch_size_per_gpu]
+```
+
+### 5. Evaluating Models (New in V2)
+The new evaluate.sh script automates the generation of comparative plots from your trained models' predictions.
+
+How to Run the Evaluation
+Simply execute the script:
+
+```bash
+./evaluate.sh
+```
+
+This will run a series of Python scripts to generate:
+
+Model Comparisons: ROC curves comparing ParT and PN.
+
+Feature Subset Comparisons: ROC curves for kin vs. kinpid vs. full feature sets for both ParT and PN.
+
+Dataset Size Comparisons: ROC curves for models trained on 1M, 2M, and 10M jet datasets.
+
+Macro OVO Comparisons: Bar plots comparing the macro one-vs-one ROC AUC scores.
+
+All generated plots and CSV summaries will be saved in the graficos_comparativos_v5/ directory.
+
+
+## Additional Tools and Utilities (New in V2)
+
+The following scripts have been added to facilitate development and analysis.
+
+### Monitoring Training Progress (monitor_training.sh)
+This script allows you to view the progress of a training run in real-time in a clean and concise manner. It filters the log file to display only the most important metrics.
+
+Usage:
+
+To use it, open a new terminal and run the script, passing the path to the log file being generated during training as an argument:
+
+```bash
+./monitor_training.sh [path_to_log_file]
+
+# Example:
+./monitor_training.sh logs/JetClass/Pythia/full/ParT/1M/20230101_120000/net.log
+```
+
+### Creating Dataset Samples (sample_root_files.py)
+Due to the large size of the dataset files, it can be useful to work with smaller samples for quick tests, debugging, or running experiments on hardware with limited resources. This script allows you to create down-sampled versions of the .root files.
+
+Usage:
+
+The script takes an input directory (with the original files), an output directory (where the new files will be saved), and the number of events to sample from each file.
+
+```bash
+
+python sample_root_files.py --input-dir [input_directory] --output-dir [output_directory] --num-events [N]
+
+# Example to create a sample of 1000 events per file:
+python sample_root_files.py \
+  --input-dir ./datasets/JetClass/Pythia/train_1M \
+  --output-dir ./datasets/JetClass/Pythia/train_1k_sample \
+  --num-events 1000
+```
+
+[README from original repo](https://github.com/jet-universe/particle_transformer/blob/29ef32b5020c11d0d22fba01f37a740a72cbbb4d/README.md)
 
 ## Citations
 
@@ -151,65 +209,3 @@ Additionally, if you use the ParticleNet model, please cite:
 }
 ```
 
-For the QuarkGluon dataset, please cite:
-
-```
-@article{Komiske:2018cqr,
-    author = "Komiske, Patrick T. and Metodiev, Eric M. and Thaler, Jesse",
-    title = "{Energy Flow Networks: Deep Sets for Particle Jets}",
-    eprint = "1810.05165",
-    archivePrefix = "arXiv",
-    primaryClass = "hep-ph",
-    reportNumber = "MIT-CTP 5064",
-    doi = "10.1007/JHEP01(2019)121",
-    journal = "JHEP",
-    volume = "01",
-    pages = "121",
-    year = "2019"
-}
-
-@dataset{komiske_patrick_2019_3164691,
-  author       = {Komiske, Patrick and
-                  Metodiev, Eric and
-                  Thaler, Jesse},
-  title        = {Pythia8 Quark and Gluon Jets for Energy Flow},
-  month        = may,
-  year         = 2019,
-  publisher    = {Zenodo},
-  version      = {v1},
-  doi          = {10.5281/zenodo.3164691},
-  url          = {https://doi.org/10.5281/zenodo.3164691}
-}
-```
-
-For the TopLandscape dataset, please cite:
-
-```
-@article{Kasieczka:2019dbj,
-    author = "Butter, Anja and others",
-    editor = "Kasieczka, Gregor and Plehn, Tilman",
-    title = "{The Machine Learning landscape of top taggers}",
-    eprint = "1902.09914",
-    archivePrefix = "arXiv",
-    primaryClass = "hep-ph",
-    doi = "10.21468/SciPostPhys.7.1.014",
-    journal = "SciPost Phys.",
-    volume = "7",
-    pages = "014",
-    year = "2019"
-}
-
-@dataset{kasieczka_gregor_2019_2603256,
-  author       = {Kasieczka, Gregor and
-                  Plehn, Tilman and
-                  Thompson, Jennifer and
-                  Russel, Michael},
-  title        = {Top Quark Tagging Reference Dataset},
-  month        = mar,
-  year         = 2019,
-  publisher    = {Zenodo},
-  version      = {v0 (2018\_03\_27)},
-  doi          = {10.5281/zenodo.2603256},
-  url          = {https://doi.org/10.5281/zenodo.2603256}
-}
-```
